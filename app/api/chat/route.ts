@@ -4,10 +4,10 @@ export async function POST(request: Request) {
   const { messages } = await request.json()
   
   const apiKey = process.env.OLLAMA_API_KEY || '47e8f864937c4bc2821b341295ac8f87.qMJMktsjxasoPfBD4EG_I8y9'
-  const model = process.env.OLLAMA_MODEL || 'llama3.2'
+  const model = process.env.OLLAMA_MODEL || 'mistral-large-3:675b'
   
   try {
-    const response = await fetch('https://api.ollama.com/v1/chat/completions', {
+    const response = await fetch('https://ollama.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
