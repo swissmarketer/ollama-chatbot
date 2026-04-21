@@ -35,10 +35,10 @@ export default function Home() {
     setCharCount(e.target.value.length)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      const form = e.currentTarget.form
+      const form = (e.target as HTMLInputElement).form
       if (form) form.dispatchEvent(new Event('submit', { bubbles: true }))
     }
     if (e.key === 'Escape') {
