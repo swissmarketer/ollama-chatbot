@@ -3,13 +3,16 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   const { messages } = await request.json()
   
-  const ollamaUrl = process.env.OLLAMA_URL || 'http://ollama:11434'
-  const model = process.env.OLLAMA_MODEL || 'llama3'
+  const apiKey = process.env.OLLAMA_API_KEY || '47e8f864937c4bc2821b341295ac8f87.qMJMktsjxasoPfBD4EG_I8y9'
+  const model = process.env.OLLAMA_MODEL || 'llama3.2'
   
   try {
-    const response = await fetch(`${ollamaUrl}/api/chat`, {
+    const response = await fetch('https://api.ollama.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
         model,
         messages,
@@ -21,13 +24,15 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text()
       return NextResponse.json(
-        { error: `Ollama Error: ${response.status} - ${errorText}` },
+        { error: `Error: ${response.status} - ${errorText}` },
         { status: response.status }
       )
     }
     
     const data = await response.json()
-    return NextResponse.json({ response: data.message?.content || 'Keine Antwort erhalten' })
+    return NextResponse.json({ 
+      response: data.choices?.[0]?.message?.content || 'Keine Antwort erhalten' 
+    })
   } catch (error) {
     const err = error as Error
     return NextResponse.json(
