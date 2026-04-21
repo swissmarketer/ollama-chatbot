@@ -48,9 +48,6 @@ export default function Home() {
     e.preventDefault()
     if (!input.trim() || loading) return
 
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = new AbortController()
-
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -78,33 +75,17 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: allMessages.map(({ role, content }) => ({ role, content }))
-        }),
-        signal: abortControllerRef.current.signal
+        })
       })
       
-      if (!res.ok) {
-        throw new Error('API Error')
-      }
+      const data = await res.json()
       
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No reader')
-      
-      const decoder = new TextDecoder()
-      
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        const chunk = decoder.decode(value, { stream: true })
-        
-        setMessages(prev => prev.map(msg => 
-          msg.id === assistantMessageId 
-            ? { ...msg, content: msg.content + chunk }
-            : msg
-        ))
-      }
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: data.response || data.error || 'Ein Fehler ist aufgetreten.' }
+          : msg
+      ))
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessageId 
           ? { ...msg, content: 'Verbindungsfehler. Bitte versuche es erneut.' }
