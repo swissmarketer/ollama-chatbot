@@ -36,7 +36,15 @@ export default function Home() {
       timestamp: new Date()
     }
     
-    setMessages(prev => [...prev, userMessage])
+    const assistantMessageId = (Date.now() + 1).toString()
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    }
+    
+    setMessages(prev => [...prev, userMessage, assistantMessage])
     setInput('')
     setLoading(true)
     setIsTyping(true)
@@ -49,21 +57,34 @@ export default function Home() {
           messages: [...messages, userMessage].map(({ role, content }) => ({ role, content }))
         })
       })
-      const data = await res.json()
       
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response || data.error || 'Ein Fehler ist aufgetreten.',
-        timestamp: new Date()
-      }])
+      if (!res.ok) {
+        throw new Error('API Error')
+      }
+      
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No reader')
+      
+      const decoder = new TextDecoder()
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value, { stream: true })
+        
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: msg.content + chunk }
+            : msg
+        ))
+      }
     } catch {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Verbindungsfehler. Bitte versuche es erneut.',
-        timestamp: new Date()
-      }])
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: 'Verbindungsfehler. Bitte versuche es erneut.' }
+          : msg
+      ))
     }
     
     setLoading(false)

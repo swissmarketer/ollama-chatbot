@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   
   try {
     const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
     const stream = new ReadableStream({
       async start(controller) {
         try {
