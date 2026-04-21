@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface Message {
@@ -15,19 +15,44 @@ export default function Home() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  const [charCount, setCharCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [messages, scrollToBottom])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+    setCharCount(e.target.value.length)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      const form = e.currentTarget.form
+      if (form) form.dispatchEvent(new Event('submit', { bubbles: true }))
+    }
+    if (e.key === 'Escape') {
+      setInput('')
+      setCharCount(0)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || loading) return
+
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -44,8 +69,10 @@ export default function Home() {
       timestamp: new Date()
     }
     
+    const allMessages = [...messages, userMessage]
     setMessages(prev => [...prev, userMessage, assistantMessage])
     setInput('')
+    setCharCount(0)
     setLoading(true)
     setIsTyping(true)
 
@@ -54,8 +81,9 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          messages: [...messages, userMessage].map(({ role, content }) => ({ role, content }))
-        })
+          messages: allMessages.map(({ role, content }) => ({ role, content }))
+        }),
+        signal: abortControllerRef.current.signal
       })
       
       if (!res.ok) {
@@ -79,7 +107,8 @@ export default function Home() {
             : msg
         ))
       }
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessageId 
           ? { ...msg, content: 'Verbindungsfehler. Bitte versuche es erneut.' }
@@ -91,7 +120,11 @@ export default function Home() {
     setIsTyping(false)
   }
 
-  const clearChat = () => setMessages([])
+  const clearChat = () => {
+    abortControllerRef.current?.abort()
+    setMessages([])
+    setCharCount(0)
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -276,10 +309,12 @@ export default function Home() {
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 placeholder="Nachricht eingeben..."
                 disabled={loading}
-                className="w-full bg-transparent px-6 py-4 pr-24 text-white placeholder-gray-500 outline-none rounded-2xl"
+                autoComplete="off"
+                className="w-full bg-transparent px-6 py-4 pr-32 text-white placeholder-gray-500 outline-none rounded-2xl"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
                 {input && (
