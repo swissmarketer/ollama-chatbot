@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface Message {
   id: string
@@ -16,7 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -24,23 +24,26 @@ export default function Home() {
 
   useEffect(() => {
     scrollToBottom()
-    return () => {
-      abortControllerRef.current?.abort()
-    }
   }, [messages, scrollToBottom])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value)
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
+    }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+    adjustTextareaHeight()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
-      const form = (e.target as HTMLInputElement).form
+      const form = (e.target as HTMLTextAreaElement).form
       if (form) form.dispatchEvent(new Event('submit', { bubbles: true }))
-    }
-    if (e.key === 'Escape') {
-      setInput('')
     }
   }
 
@@ -68,6 +71,10 @@ export default function Home() {
     setInput('')
     setLoading(true)
     setIsTyping(true)
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
 
     try {
       const res = await fetch('/api/chat', {
@@ -97,198 +104,170 @@ export default function Home() {
     setIsTyping(false)
   }
 
-  const clearChat = () => {
-    abortControllerRef.current?.abort()
-    setMessages([])
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-dark-900">
+    <div className="min-h-screen bg-[#171717] flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass border-b border-white/10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-[#212121] border-b border-[#3f3f46]">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-green-500 flex items-center justify-center">
-              <svg className="w-6 h-6 text-dark-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#1a7f5a] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144-3.3543L12.031 11.2a.0804.0804 0 0 1 .038.052v5.6772a4.504 4.504 0 0 1-2.8776 4.5448l-4.7942 2.7582a.0804.0804 0 0 1-.0767-.0073l-2.9293-1.6935a4.4944 4.4944 0 0 1-1.111-5.6452zm10.2434 8.728l-2.3221-1.3384 2.8863-1.6675a.0804.0804 0 0 1 .0767.0073l2.9293 1.6935a4.4944 4.4944 0 0 1-.6766 7.6673l-4.7942 2.7582a.0804.0804 0 0 1-.0767-.0073z"/>
               </svg>
             </div>
-            <div>
-              <h1 className="text-xl font-bold gradient-text">AI Chat</h1>
-              <p className="text-xs text-gray-500">Powered by Ollama</p>
-            </div>
+            <span className="text-white font-medium">AI Chat</span>
           </div>
           
-          {messages.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Neu
-            </button>
-          )}
+          <button
+            onClick={() => setMessages([])}
+            className="p-2 rounded-lg hover:bg-[#2f2f2f] text-gray-400 hover:text-white transition-colors"
+            title="New Chat"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-8 overflow-y-auto">
-        <AnimatePresence mode="popLayout">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-6">
           {messages.length === 0 ? (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-96 space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] space-y-8"
             >
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  rotate: [0, 5, -5, 0]
-                }}
-                transition={{ 
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="w-24 h-24 rounded-3xl bg-gradient-to-br from-accent-500/20 to-green-500/20 flex items-center justify-center backdrop-blur-xl border border-white/10"
-              >
-                <span className="text-5xl">🤖</span>
-              </motion.div>
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-2">Willkommen!</h2>
-                <p className="text-gray-500">Stelle mir eine Frage - ich bin bereit zu helfen.</p>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#10a37f] to-[#1a7f5a] flex items-center justify-center shadow-lg">
+                <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144-3.3543L12.031 11.2a.0804.0804 0 0 1 .038.052v5.6772a4.504 4.504 0 0 1-2.8776 4.5448l-4.7942 2.7582a.0804.0804 0 0 1-.0767-.0073l-2.9293-1.6935a4.4944 4.4944 0 0 1-1.111-5.6452zm10.2434 8.728l-2.3221-1.3384 2.8863-1.6675a.0804.0804 0 0 1 .0767.0073l2.9293 1.6935a4.4944 4.4944 0 0 1-.6766 7.6673l-4.7942 2.7582a.0804.0804 0 0 1-.0767-.0073z"/>
+                </svg>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {['Erkläre mir etwas', 'Hilf mir mit Code', 'Was ist KI?'].map((suggestion, i) => (
-                  <motion.button
-                    key={suggestion}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setInput(suggestion)}
-                    className="px-4 py-2 rounded-full bg-dark-700 text-sm text-gray-300 border border-white/10 hover:border-accent-500/50 transition-all"
+              <div className="text-center space-y-2">
+                <h1 className="text-3xl font-semibold text-white">Wie kann ich dir helfen?</h1>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-xl">
+                {[
+                  { icon: '💻', text: 'Erkläre mir etwas' },
+                  { icon: '📝', text: 'Hilf mir beim Schreiben' },
+                  { icon: '🎨', text: 'Kreative Ideen' },
+                  { icon: '💡', text: 'Allgemeinwissen' }
+                ].map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setInput(item.text)}
+                    className="p-4 rounded-xl bg-[#2f2f2f] hover:bg-[#3f3f3f] border border-[#3f3f46] hover:border-[#565656] transition-all text-left group"
                   >
-                    {suggestion}
-                  </motion.button>
+                    <span className="text-xl">{item.icon}</span>
+                    <p className="text-gray-200 font-medium mt-2 group-hover:text-white">{item.text}</p>
+                  </button>
                 ))}
               </div>
             </motion.div>
           ) : (
-            messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
-              >
-                <div
-                  className={`max-w-[85%] ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-br from-accent-500/20 to-accent-500/10 rounded-3xl rounded-br-md'
-                      : 'bg-dark-700 rounded-3xl rounded-bl-md'
-                  } p-5 border border-white/10 backdrop-blur-xl`}
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
-                  <div className="flex items-start gap-3">
-                    {message.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-500 to-green-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm">🤖</span>
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="text-white leading-relaxed whitespace-pre-wrap">
-                        {message.content}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-2">
-                        {message.timestamp.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                    {message.role === 'user' && (
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm">👤</span>
-                      </div>
+                  <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                    message.role === 'user' 
+                      ? 'bg-gradient-to-br from-[#5436da] to-[#6336c9]' 
+                      : 'bg-gradient-to-br from-[#10a37f] to-[#1a7f5a]'
+                  }`}>
+                    {message.role === 'user' ? (
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729z"/>
+                      </svg>
                     )}
                   </div>
-                </div>
-              </motion.div>
-            ))
+                  <div className={`flex-1 ${message.role === 'user' ? 'max-w-[85%]' : ''}`}>
+                    <div className={`p-4 rounded-2xl ${
+                      message.role === 'user' 
+                        ? 'bg-[#2f2f2f] text-white' 
+                        : 'bg-transparent text-white'
+                    }`}>
+                      <div className="prose prose-invert max-w-none whitespace-pre-wrap">
+                        {message.content}
+                      </div>
+                    </div>
+                    <div className={`flex gap-2 mt-1 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <button className="p-1.5 rounded hover:bg-[#2f2f2f] text-gray-500 hover:text-gray-300 transition-colors" title="Copy">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+              
+              {isTyping && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex gap-4"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#1a7f5a] flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729z"/>
+                    </svg>
+                  </div>
+                  <div className="flex gap-1 items-center h-8">
+                    <span className="w-2 h-2 bg-[#10a37f] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-[#10a37f] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-[#10a37f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           )}
-        </AnimatePresence>
-
-        {/* Typing indicator */}
-        <AnimatePresence>
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-3 mb-6"
-            >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-500 to-green-500 flex items-center justify-center">
-                <span className="text-sm">🤖</span>
-              </div>
-              <div className="bg-dark-700 rounded-3xl rounded-bl-md px-5 py-4 border border-white/10">
-                <div className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ y: [0, -8, 0] }}
-                      transition={{
-                        duration: 0.6,
-                        repeat: Infinity,
-                        delay: i * 0.15,
-                      }}
-                      className="w-2 h-2 rounded-full bg-accent-500"
-                    />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <div ref={messagesEndRef} />
-      </div>
+          <div ref={messagesEndRef} />
+        </div>
+      </main>
 
       {/* Input */}
-      <div className="sticky bottom-0 glass border-t border-white/10">
-        <div className="max-w-4xl mx-auto px-6 py-6">
+      <div className="sticky bottom-0 bg-gradient-to-t from-[#171717] via-[#171717] to-transparent pt-4 pb-4">
+        <div className="max-w-3xl mx-auto px-4">
           <form onSubmit={handleSubmit} className="relative">
-            <div className="relative bg-dark-700 rounded-2xl border border-white/10 focus-within:border-accent-500/50 transition-colors">
-              <input
-                type="text"
+            <div className="relative bg-[#2f2f2f] rounded-2xl border border-[#3f3f46] focus-within:border-[#565656] transition-colors">
+              <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Nachricht eingeben..."
+                placeholder="Nachricht an AI Chat..."
                 disabled={loading}
-                autoComplete="off"
-                className="w-full bg-transparent px-6 py-4 pr-32 text-white placeholder-gray-500 outline-none rounded-2xl"
+                rows={1}
+                className="w-full bg-transparent px-4 py-3.5 pr-14 text-white placeholder-gray-500 outline-none rounded-2xl resize-none max-h-52"
+                style={{ minHeight: '52px' }}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
-                {input && (
-                  <button
-                    type="button"
-                    onClick={() => setInput('')}
-                    className="p-2 rounded-xl hover:bg-dark-600 text-gray-500 hover:text-white transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={loading || !input.trim()}
-                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-accent-500 to-green-500 text-dark-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <span>Senden</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="absolute right-2 bottom-2 p-2 rounded-xl bg-[#10a37f] hover:bg-[#0e8c6b] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? (
+                  <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
-                </button>
-              </div>
+                )}
+              </button>
             </div>
-            <p className="text-xs text-gray-600 text-center mt-3">
+            <p className="text-xs text-gray-500 text-center mt-2">
               KI kann Fehler machen. Überprüfe wichtige Informationen.
             </p>
           </form>
